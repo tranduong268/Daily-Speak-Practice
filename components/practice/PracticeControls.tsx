@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { UserSettings, TargetLanguage } from '../../types';
 
 interface Props {
@@ -10,7 +10,7 @@ interface Props {
   setIsTeleprompterActive: (active: boolean) => void;
   isAudioPlaying: boolean;
   setIsAudioPlaying: (playing: boolean) => void;
-  audioRef: React.MutableRefObject<HTMLAudioElement | null>; // Received from parent
+  audioRef: React.MutableRefObject<HTMLAudioElement | null>;
 }
 
 export const PracticeControls: React.FC<Props> = ({ 
@@ -24,7 +24,9 @@ export const PracticeControls: React.FC<Props> = ({
   setIsAudioPlaying,
   audioRef
 }) => {
+  const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const themeColor = activeLang === 'en' ? 'cyan' : 'rose';
+  const speedMenuRef = useRef<HTMLDivElement>(null);
 
   // Sync playback rate when settings changes
   useEffect(() => {
@@ -32,6 +34,17 @@ export const PracticeControls: React.FC<Props> = ({
       audioRef.current.playbackRate = settings.audioSpeed;
     }
   }, [settings.audioSpeed, audioUrl, audioRef]);
+
+  // Click outside to close speed menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (speedMenuRef.current && !speedMenuRef.current.contains(event.target as Node)) {
+        setShowSpeedMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const toggleSetting = (key: keyof UserSettings) => {
     if (typeof settings[key] === 'boolean') {
@@ -46,15 +59,9 @@ export const PracticeControls: React.FC<Props> = ({
     });
   };
 
-  // --- AUDIO SPEED LOGIC (Cycling Button) ---
-  const cycleAudioSpeed = () => {
-    const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
-    // Find nearest current speed index or default to 1.0
-    let currentIndex = speeds.indexOf(settings.audioSpeed);
-    if (currentIndex === -1) currentIndex = 2; // Default to 1.0 if not found
-
-    const nextIndex = (currentIndex + 1) % speeds.length;
-    updateSettings({ ...settings, audioSpeed: speeds[nextIndex] });
+  const setAudioSpeed = (speed: number) => {
+    updateSettings({ ...settings, audioSpeed: speed });
+    setShowSpeedMenu(false);
   };
 
   // --- AUDIO TRANSPORT ---
@@ -64,7 +71,6 @@ export const PracticeControls: React.FC<Props> = ({
     if (isAudioPlaying) {
       audioRef.current.pause();
     } else {
-      // RESET LOGIC: If audio finished, reset to start
       if (audioRef.current.ended) {
         audioRef.current.currentTime = 0;
       }
@@ -72,15 +78,14 @@ export const PracticeControls: React.FC<Props> = ({
     }
   };
 
-  // Event driven state updates to ensure sync
   const onAudioPlay = () => {
     setIsAudioPlaying(true);
-    setIsTeleprompterActive(true); // Start scrolling when audio starts
+    setIsTeleprompterActive(true); 
   };
 
   const onAudioPause = () => {
     setIsAudioPlaying(false);
-    setIsTeleprompterActive(false); // Stop scrolling when audio pauses
+    setIsTeleprompterActive(false); 
   };
 
   const onAudioEnded = () => {
@@ -94,20 +99,18 @@ export const PracticeControls: React.FC<Props> = ({
         audioRef.current?.pause();
         return; 
     }
-    
     // Toggle manual reading
     setIsTeleprompterActive(!isTeleprompterActive);
   };
 
   return (
-    // OPTIMIZED: Increased bottom padding (pb-10) for iOS home indicator
     <div className="flex-none p-3 pb-10 md:p-4 md:pb-6 bg-slate-900/90 backdrop-blur-xl border-t border-slate-800 z-30 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
       <div className="max-w-3xl mx-auto flex flex-col gap-3 md:gap-4">
         
         {/* Row 1: Main Transport Controls */}
         <div className="flex items-center gap-2 md:gap-4">
           
-          <div className="flex gap-2">
+          <div className="flex gap-2 relative">
             {/* Audio Play/Pause Button */}
             <button 
               onClick={toggleAudio}
@@ -115,11 +118,10 @@ export const PracticeControls: React.FC<Props> = ({
               className={`flex-none w-11 h-11 md:w-12 md:h-12 rounded-full flex items-center justify-center border border-slate-700 transition-all ${
                 audioUrl 
                   ? isAudioPlaying 
-                    ? 'bg-amber-500 text-white border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.5)]' // Playing State
-                    : 'bg-slate-800 text-cyan-400 hover:bg-slate-700 hover:border-cyan-500/50' // Idle State
+                    ? 'bg-amber-500 text-white border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.5)]' 
+                    : 'bg-slate-800 text-cyan-400 hover:bg-slate-700 hover:border-cyan-500/50' 
                   : 'bg-slate-900 text-slate-600 cursor-not-allowed'
               }`}
-              title="Sample Reading (Play/Pause)"
             >
               {audioUrl ? (
                 <>
@@ -141,20 +143,39 @@ export const PracticeControls: React.FC<Props> = ({
               )}
             </button>
 
-            {/* NEW: Dedicated Audio Speed Button (Cycles through 0.5x - 2x) */}
-            <button 
-              onClick={cycleAudioSpeed}
-              disabled={!audioUrl}
-              className={`flex-none w-11 h-11 md:w-12 md:h-12 rounded-full flex flex-col items-center justify-center border border-slate-700 transition-all ${
-                 isAudioPlaying ? 'bg-slate-800 border-amber-500/50' : 'bg-slate-800 hover:bg-slate-700'
-              }`}
-              title="Audio Speed"
-            >
-               <span className="text-[9px] text-slate-400 font-bold uppercase">Voice</span>
-               <span className={`text-xs font-bold font-mono ${isAudioPlaying ? 'text-amber-400' : 'text-slate-200'}`}>
-                 {settings.audioSpeed}x
-               </span>
-            </button>
+            {/* AUDIO SPEED DROPDOWN */}
+            <div className="relative" ref={speedMenuRef}>
+              <button 
+                onClick={() => setShowSpeedMenu(!showSpeedMenu)}
+                disabled={!audioUrl}
+                className={`flex-none w-11 h-11 md:w-12 md:h-12 rounded-full flex flex-col items-center justify-center border border-slate-700 transition-all ${
+                   isAudioPlaying ? 'bg-slate-800 border-amber-500/50' : 'bg-slate-800 hover:bg-slate-700'
+                }`}
+                title="Audio Speed"
+              >
+                 <span className="text-[9px] text-slate-400 font-bold uppercase">Voice</span>
+                 <span className={`text-xs font-bold font-mono ${isAudioPlaying ? 'text-amber-400' : 'text-slate-200'}`}>
+                   {settings.audioSpeed}x
+                 </span>
+              </button>
+
+              {/* Dropdown Menu */}
+              {showSpeedMenu && (
+                <div className="absolute bottom-full left-0 mb-2 w-16 bg-slate-800 border border-slate-600 rounded-lg shadow-xl overflow-hidden z-50 animate-fade-in-up">
+                  {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].reverse().map((speed) => (
+                    <button
+                      key={speed}
+                      onClick={() => setAudioSpeed(speed)}
+                      className={`w-full py-2 text-xs font-bold font-mono hover:bg-slate-700 transition-colors ${
+                        settings.audioSpeed === speed ? 'text-cyan-400 bg-slate-700/50' : 'text-slate-300'
+                      }`}
+                    >
+                      {speed}x
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Gender Toggle */}
             <button 
@@ -162,17 +183,12 @@ export const PracticeControls: React.FC<Props> = ({
               className={`flex-none w-11 h-11 md:w-12 md:h-12 rounded-full flex items-center justify-center border border-slate-700 transition-all ${
                 settings.voiceGender === 'female' ? 'bg-pink-900/20 text-pink-400 hover:bg-pink-900/30' : 'bg-blue-900/20 text-blue-400 hover:bg-blue-900/30'
               }`}
-              title="Switch Voice Gender"
             >
-              {settings.voiceGender === 'female' ? (
-                <span className="text-xl">👩</span>
-              ) : (
-                <span className="text-xl">👨</span>
-              )}
+              {settings.voiceGender === 'female' ? <span className="text-xl">👩</span> : <span className="text-xl">👨</span>}
             </button>
           </div>
 
-          {/* BIG SPEAK/PAUSE BUTTON (Teleprompter Control) */}
+          {/* MAIN ACTION BUTTON */}
           <button
             onClick={handleMainToggle}
             className={`flex-1 h-12 md:h-14 rounded-xl md:rounded-2xl font-bold text-base md:text-lg tracking-wider shadow-lg transition-transform transform active:scale-95 flex items-center justify-center gap-2 ${
@@ -197,18 +213,18 @@ export const PracticeControls: React.FC<Props> = ({
         </div>
 
         {/* Row 2: Settings Grid */}
-        <div className={`grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 text-[10px] md:text-xs text-slate-400 transition-opacity duration-300 opacity-100`}>
+        <div className={`grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 text-[10px] md:text-xs text-slate-400`}>
           
-          {/* Scroll Speed Slider - INDEPENDENT now */}
+          {/* SCROLL SPEED SLIDER - ALWAYS ACTIVE */}
           <div className="col-span-1 md:col-span-1 flex items-center gap-1.5 md:gap-3 bg-slate-800/50 rounded-lg px-2 py-2 md:px-3">
-              <span className={`w-6 md:w-8 shrink-0 text-cyan-400 font-bold`}>
+              <span className={`w-6 md:w-8 shrink-0 ${isAudioPlaying ? 'text-amber-400' : 'text-cyan-400'} font-bold`}>
                 Spd
               </span>
               <input 
                 type="range" min="1" max="5" step="0.5" 
                 value={settings.teleprompterSpeed} 
                 onChange={(e) => updateSettings({ ...settings, teleprompterSpeed: parseFloat(e.target.value) })}
-                className={`w-full h-1.5 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-${themeColor}-500 touch-none`}
+                className={`w-full h-1.5 bg-slate-600 rounded-lg appearance-none cursor-pointer ${isAudioPlaying ? 'accent-amber-500' : `accent-${themeColor}-500`} touch-none`}
               />
           </div>
 

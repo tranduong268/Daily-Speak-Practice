@@ -18,7 +18,6 @@ interface SegmentMap {
   endPct: number;
 }
 
-// OPTIMIZED WEIGHTS
 const calculateWeight = (word: string): number => {
   let w = word.length; 
   if (word.includes('.') || word.includes('?') || word.includes('!')) w += 3; 
@@ -44,16 +43,15 @@ const Teleprompter: React.FC<Props> = ({
     if (containerRef.current) containerRef.current.scrollTop = 0;
   }, [data]);
 
-  // Reset logic when starting playback from bottom or fresh start
-  // This ensures the first word is centered immediately when playing starts
+  // FORCE RESET TO TOP (CENTER) WHEN STARTING
   useEffect(() => {
     if (isPlaying && containerRef.current) {
+      // If we are at the bottom, reset. 
+      // OR if we are just starting fresh, this ensures we are at 0 (which is visually center due to padding)
       const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
-      
-      // If we are at the very bottom (finished state), reset to top
-      if (scrollHeight - scrollTop <= clientHeight + 100) {
-         setScrollPos(0);
+      if (scrollTop === 0 || (scrollHeight - scrollTop <= clientHeight + 100)) {
          containerRef.current.scrollTop = 0;
+         setScrollPos(0);
       }
     }
   }, [isPlaying]);
@@ -99,8 +97,6 @@ const Teleprompter: React.FC<Props> = ({
         
         if (duration > 0) {
           const progress = currentTime / duration;
-          
-          // Find active segment
           const activeSegment = segmentMap.find(
             seg => progress >= seg.startPct && progress < seg.endPct
           );
@@ -110,23 +106,23 @@ const Teleprompter: React.FC<Props> = ({
             if (el) {
               const containerH = containerRef.current.clientHeight;
               const elHeight = el.offsetHeight;
-              // el.offsetTop is relative to the parent flex container, which starts at y=50vh due to padding
               const elTop = el.offsetTop; 
               
-              // FORMULA FOR EXACT CENTER
-              // We want the CENTER of the element to be at the CENTER of the Viewport.
-              // Viewport Center relative to content = scrollTop + (containerH / 2)
-              // Element Center = elTop + (elHeight / 2)
-              // So: scrollTop = elTop - (containerH / 2) + (elHeight / 2)
+              // TARGET CALCULATION:
+              // To center the element: ScrollTop = ElementTop - (ContainerHalf) + (ElementHalf)
+              // NOTE: offsetTop is relative to the scroll container's top edge (which includes the padding)
               const targetTop = elTop - (containerH / 2) + (elHeight / 2);
               
               const currentTop = containerRef.current.scrollTop;
               const dist = targetTop - currentTop;
               
-              // Smooth Lock: 0.1 for very smooth catch-up, 0.7 for tight snap
-              // We use 0.5 for a balance between "flow" and "sync"
+              // USE SLIDER SETTING TO ADJUST LERP (CATCH-UP SPEED)
+              // Slider 1 -> 0.05 (Loose/Slow catchup)
+              // Slider 5 -> 0.5 (Tight/Fast snap)
+              const lerpFactor = 0.05 + (settings.teleprompterSpeed / 5) * 0.45;
+
               if (Math.abs(dist) > 1) {
-                 const nextPos = currentTop + (dist * 0.15); // Slightly lower lerp to make it flow like water rather than jerk
+                 const nextPos = currentTop + (dist * lerpFactor); 
                  containerRef.current.scrollTop = nextPos;
                  setScrollPos(nextPos);
               }
@@ -157,7 +153,7 @@ const Teleprompter: React.FC<Props> = ({
       animationFrameId = requestAnimationFrame(animate);
     }
     return () => cancelAnimationFrame(animationFrameId);
-  }, [isPlaying, SCROLL_SPEED, onScrollComplete, isAudioMode, audioRef, segmentMap, settings.fontSize]); // Added settings.fontSize to dependency
+  }, [isPlaying, SCROLL_SPEED, onScrollComplete, isAudioMode, audioRef, segmentMap, settings.fontSize, settings.teleprompterSpeed]); 
 
   if (!data?.segments) {
     return (
@@ -170,22 +166,24 @@ const Teleprompter: React.FC<Props> = ({
   return (
     <div className="relative w-full h-full bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden shadow-2xl group">
       
-      {/* --- FOCUS GRADIENTS (The "Active Line" Effect) --- */}
-      {/* Top Gradient */}
+      {/* --- FOCUS GRADIENTS --- */}
       <div className="absolute top-0 left-0 right-0 h-[42%] bg-gradient-to-b from-slate-950 via-slate-950/95 to-transparent z-10 pointer-events-none"></div>
-      
-      {/* Bottom Gradient */}
       <div className="absolute bottom-0 left-0 right-0 h-[42%] bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent z-10 pointer-events-none"></div>
 
       {/* Scrollable Container */}
       <div 
         ref={containerRef}
         onScroll={handleManualScroll}
-        // py-[50vh] ensures the first line starts exactly in the middle of the viewport when scrollTop is 0
+        // CRITICAL FIX: py-[50vh] ensures start padding.
+        // REMOVED 'flex items-center' from here if it was previously on container (it wasn't, but confirming).
         className="h-full overflow-y-auto no-scrollbar px-4 md:px-8 py-[50vh] text-center touch-pan-y relative z-0"
         style={{ scrollBehavior: 'auto' }}
       >
-        <div className="flex flex-wrap justify-center content-center items-center">
+        {/* CRITICAL FIX: Removed 'content-center' and 'items-center'. 
+            This ensures content flows from the top padding downwards naturally, 
+            so the first word is at the exact center of the start view, not pushed down. 
+        */}
+        <div className="flex flex-wrap justify-center content-start items-start">
           {data.segments.map((seg, idx) => (
             <WordSegment 
               key={idx} 
