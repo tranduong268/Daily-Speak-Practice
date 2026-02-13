@@ -24,8 +24,6 @@ export const PracticeControls: React.FC<Props> = ({
   setIsAudioPlaying,
   audioRef
 }) => {
-  // Removed local audioRef
-  
   const themeColor = activeLang === 'en' ? 'cyan' : 'rose';
 
   // Sync playback rate when settings changes
@@ -48,14 +46,18 @@ export const PracticeControls: React.FC<Props> = ({
     });
   };
 
+  // --- AUDIO SPEED LOGIC (Cycling Button) ---
   const cycleAudioSpeed = () => {
-    // Cycle: 1.0 -> 0.75 -> 0.5 -> 1.0
-    const nextSpeed = settings.audioSpeed === 1 ? 0.75 : settings.audioSpeed === 0.75 ? 0.5 : 1;
-    updateSettings({ ...settings, audioSpeed: nextSpeed });
+    const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+    // Find nearest current speed index or default to 1.0
+    let currentIndex = speeds.indexOf(settings.audioSpeed);
+    if (currentIndex === -1) currentIndex = 2; // Default to 1.0 if not found
+
+    const nextIndex = (currentIndex + 1) % speeds.length;
+    updateSettings({ ...settings, audioSpeed: speeds[nextIndex] });
   };
 
-  // --- AUDIO LOGIC ---
-  
+  // --- AUDIO TRANSPORT ---
   const toggleAudio = () => {
     if (!audioRef.current || !audioUrl) return;
 
@@ -86,16 +88,14 @@ export const PracticeControls: React.FC<Props> = ({
     setIsTeleprompterActive(false);
   };
 
-  // --- SPEAK BUTTON LOGIC ---
+  // --- MAIN BUTTON LOGIC ---
   const handleMainToggle = () => {
     if (isAudioPlaying) {
         audioRef.current?.pause();
-        // Return here, because onAudioPause will handle setting isTeleprompterActive(false)
         return; 
     }
     
     // Toggle manual reading
-    // The Teleprompter component watches for this state change to determine if it should reset to top
     setIsTeleprompterActive(!isTeleprompterActive);
   };
 
@@ -108,7 +108,7 @@ export const PracticeControls: React.FC<Props> = ({
         <div className="flex items-center gap-2 md:gap-4">
           
           <div className="flex gap-2">
-            {/* Audio Button - SAMPLE READING */}
+            {/* Audio Play/Pause Button */}
             <button 
               onClick={toggleAudio}
               disabled={!audioUrl}
@@ -141,16 +141,19 @@ export const PracticeControls: React.FC<Props> = ({
               )}
             </button>
 
-            {/* Audio Speed Toggle */}
+            {/* NEW: Dedicated Audio Speed Button (Cycles through 0.5x - 2x) */}
             <button 
               onClick={cycleAudioSpeed}
               disabled={!audioUrl}
-              className={`flex-none w-11 h-11 md:w-12 md:h-12 rounded-full flex items-center justify-center border border-slate-700 transition-all text-[10px] md:text-xs font-bold font-mono ${
-                audioUrl ? 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white' : 'bg-slate-900 text-slate-600 cursor-not-allowed'
+              className={`flex-none w-11 h-11 md:w-12 md:h-12 rounded-full flex flex-col items-center justify-center border border-slate-700 transition-all ${
+                 isAudioPlaying ? 'bg-slate-800 border-amber-500/50' : 'bg-slate-800 hover:bg-slate-700'
               }`}
-              title="Audio Speed (1x, 0.75x, 0.5x)"
+              title="Audio Speed"
             >
-              {settings.audioSpeed}x
+               <span className="text-[9px] text-slate-400 font-bold uppercase">Voice</span>
+               <span className={`text-xs font-bold font-mono ${isAudioPlaying ? 'text-amber-400' : 'text-slate-200'}`}>
+                 {settings.audioSpeed}x
+               </span>
             </button>
 
             {/* Gender Toggle */}
@@ -169,7 +172,7 @@ export const PracticeControls: React.FC<Props> = ({
             </button>
           </div>
 
-          {/* BIG SPEAK BUTTON */}
+          {/* BIG SPEAK/PAUSE BUTTON (Teleprompter Control) */}
           <button
             onClick={handleMainToggle}
             className={`flex-1 h-12 md:h-14 rounded-xl md:rounded-2xl font-bold text-base md:text-lg tracking-wider shadow-lg transition-transform transform active:scale-95 flex items-center justify-center gap-2 ${
@@ -181,29 +184,30 @@ export const PracticeControls: React.FC<Props> = ({
             {(isTeleprompterActive && !isAudioPlaying) ? (
                 <>
                   <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  <span className="hidden sm:inline">PAUSE</span>
+                  <span className="hidden sm:inline">PAUSE SCROLL</span>
                 </>
             ) : (
                 <>
                   <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
-                  <span className="hidden sm:inline">SPEAK</span>
-                  <span className="sm:hidden">START</span>
+                  <span className="hidden sm:inline">AUTO SCROLL</span>
+                  <span className="sm:hidden">SCROLL</span>
                 </>
             )}
           </button>
         </div>
 
-        {/* Row 2: Compact Settings Grid - Adjusted gap for mobile */}
-        <div className={`grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 text-[10px] md:text-xs text-slate-400 transition-opacity duration-300 ${isAudioPlaying ? 'opacity-40 pointer-events-none grayscale' : 'opacity-100'}`}>
+        {/* Row 2: Settings Grid */}
+        <div className={`grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 text-[10px] md:text-xs text-slate-400 transition-opacity duration-300 opacity-100`}>
           
-          {/* Slider Controls */}
+          {/* Scroll Speed Slider - INDEPENDENT now */}
           <div className="col-span-1 md:col-span-1 flex items-center gap-1.5 md:gap-3 bg-slate-800/50 rounded-lg px-2 py-2 md:px-3">
-              <span className="w-6 md:w-8 shrink-0">Spd</span>
+              <span className={`w-6 md:w-8 shrink-0 text-cyan-400 font-bold`}>
+                Spd
+              </span>
               <input 
                 type="range" min="1" max="5" step="0.5" 
-                disabled={isAudioPlaying}
                 value={settings.teleprompterSpeed} 
-                onChange={(e) => updateSettings({...settings, teleprompterSpeed: parseFloat(e.target.value)})}
+                onChange={(e) => updateSettings({ ...settings, teleprompterSpeed: parseFloat(e.target.value) })}
                 className={`w-full h-1.5 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-${themeColor}-500 touch-none`}
               />
           </div>
@@ -212,7 +216,6 @@ export const PracticeControls: React.FC<Props> = ({
               <span className="w-6 md:w-8 shrink-0">Size</span>
               <input 
                 type="range" min="1.5" max="5.0" step="0.1" 
-                disabled={isAudioPlaying}
                 value={settings.fontSize} 
                 onChange={(e) => updateSettings({...settings, fontSize: parseFloat(e.target.value)})}
                 className={`w-full h-1.5 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-${themeColor}-500 touch-none`}
@@ -221,7 +224,6 @@ export const PracticeControls: React.FC<Props> = ({
 
           {/* Toggles */}
           <button 
-            disabled={isAudioPlaying}
             onClick={() => toggleSetting('showPhonetic')} 
             className={`flex items-center justify-center gap-2 rounded-lg py-2 border border-slate-700 transition-colors ${
               settings.showPhonetic ? `bg-${themeColor}-900/30 text-${themeColor}-300 border-${themeColor}-500/30` : 'bg-slate-800/50'
@@ -231,7 +233,6 @@ export const PracticeControls: React.FC<Props> = ({
           </button>
           
           <button 
-            disabled={isAudioPlaying}
             onClick={() => toggleSetting('showTranslation')} 
             className={`flex items-center justify-center gap-2 rounded-lg py-2 border border-slate-700 transition-colors ${
               settings.showTranslation ? 'bg-purple-900/30 text-purple-300 border-purple-500/30' : 'bg-slate-800/50'

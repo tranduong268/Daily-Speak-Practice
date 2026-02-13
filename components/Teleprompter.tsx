@@ -44,13 +44,16 @@ const Teleprompter: React.FC<Props> = ({
     if (containerRef.current) containerRef.current.scrollTop = 0;
   }, [data]);
 
-  // Reset logic when starting playback from bottom
+  // Reset logic when starting playback from bottom or fresh start
+  // This ensures the first word is centered immediately when playing starts
   useEffect(() => {
     if (isPlaying && containerRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+      
+      // If we are at the very bottom (finished state), reset to top
       if (scrollHeight - scrollTop <= clientHeight + 100) {
          setScrollPos(0);
-         if (containerRef.current) containerRef.current.scrollTop = 0;
+         containerRef.current.scrollTop = 0;
       }
     }
   }, [isPlaying]);
@@ -107,19 +110,23 @@ const Teleprompter: React.FC<Props> = ({
             if (el) {
               const containerH = containerRef.current.clientHeight;
               const elHeight = el.offsetHeight;
-              const elTop = el.offsetTop;
+              // el.offsetTop is relative to the parent flex container, which starts at y=50vh due to padding
+              const elTop = el.offsetTop; 
               
               // FORMULA FOR EXACT CENTER
-              // We want the MIDDLE of the element to be at the MIDDLE of the container.
+              // We want the CENTER of the element to be at the CENTER of the Viewport.
+              // Viewport Center relative to content = scrollTop + (containerH / 2)
+              // Element Center = elTop + (elHeight / 2)
+              // So: scrollTop = elTop - (containerH / 2) + (elHeight / 2)
               const targetTop = elTop - (containerH / 2) + (elHeight / 2);
               
               const currentTop = containerRef.current.scrollTop;
               const dist = targetTop - currentTop;
               
-              // Smooth Lock: 0.7 lerp factor (Increased from 0.5 for tighter snap)
-              // This makes the text catch up faster to the audio
-              if (Math.abs(dist) > 0.5) {
-                 const nextPos = currentTop + (dist * 0.7); 
+              // Smooth Lock: 0.1 for very smooth catch-up, 0.7 for tight snap
+              // We use 0.5 for a balance between "flow" and "sync"
+              if (Math.abs(dist) > 1) {
+                 const nextPos = currentTop + (dist * 0.15); // Slightly lower lerp to make it flow like water rather than jerk
                  containerRef.current.scrollTop = nextPos;
                  setScrollPos(nextPos);
               }
@@ -150,7 +157,7 @@ const Teleprompter: React.FC<Props> = ({
       animationFrameId = requestAnimationFrame(animate);
     }
     return () => cancelAnimationFrame(animationFrameId);
-  }, [isPlaying, SCROLL_SPEED, onScrollComplete, isAudioMode, audioRef, segmentMap]);
+  }, [isPlaying, SCROLL_SPEED, onScrollComplete, isAudioMode, audioRef, segmentMap, settings.fontSize]); // Added settings.fontSize to dependency
 
   if (!data?.segments) {
     return (
@@ -164,7 +171,6 @@ const Teleprompter: React.FC<Props> = ({
     <div className="relative w-full h-full bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden shadow-2xl group">
       
       {/* --- FOCUS GRADIENTS (The "Active Line" Effect) --- */}
-      {/* Heavy gradients to force eye to the center 16-20% of screen */}
       {/* Top Gradient */}
       <div className="absolute top-0 left-0 right-0 h-[42%] bg-gradient-to-b from-slate-950 via-slate-950/95 to-transparent z-10 pointer-events-none"></div>
       
@@ -175,7 +181,7 @@ const Teleprompter: React.FC<Props> = ({
       <div 
         ref={containerRef}
         onScroll={handleManualScroll}
-        // 'scroll-behavior: auto' is crucial here so JS can force the scroll position without CSS fighting back
+        // py-[50vh] ensures the first line starts exactly in the middle of the viewport when scrollTop is 0
         className="h-full overflow-y-auto no-scrollbar px-4 md:px-8 py-[50vh] text-center touch-pan-y relative z-0"
         style={{ scrollBehavior: 'auto' }}
       >
