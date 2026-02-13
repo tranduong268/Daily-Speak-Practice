@@ -18,14 +18,10 @@ interface SegmentMap {
   endPct: number;
 }
 
-// OPTIMIZED WEIGHTS FOR GEMINI TTS
-// Previous punctuation weight (12) was too high, causing the cursor to "wait" too long at the end of sentences
-// while the audio had already moved on. Reducing this syncs the visual cursor tighter to the audio.
+// OPTIMIZED WEIGHTS
 const calculateWeight = (word: string): number => {
   let w = word.length; 
-  // Reduced from 12 to 3 to prevent "cursor lag" at sentence ends
   if (word.includes('.') || word.includes('?') || word.includes('!')) w += 3; 
-  // Reduced from 5 to 2
   else if (word.includes(',') || word.includes(';') || word.includes('，')) w += 2;
   return w;
 };
@@ -114,18 +110,13 @@ const Teleprompter: React.FC<Props> = ({
               const elTop = el.offsetTop;
               
               // FORMULA FOR EXACT CENTER
-              // Adjusted Math: We want the element to be strictly in the center.
+              // We want the MIDDLE of the element to be at the MIDDLE of the container.
               const targetTop = elTop - (containerH / 2) + (elHeight / 2);
               
               const currentTop = containerRef.current.scrollTop;
               const dist = targetTop - currentTop;
               
-              // TRIỆT ĐỂ SOLUTION:
-              // 1. Threshold: If distance is < 1px, don't move (saves micro-jitters).
-              // 2. Factor: 0.5. 
-              //    - 0.9 was too fast (jittery). 
-              //    - 0.1 was too slow (laggy).
-              //    - 0.5 provides a "magnetic" feel. It closes 50% of the gap every 16ms.
+              // Smooth Lock: 0.5 lerp factor
               if (Math.abs(dist) > 0.5) {
                  const nextPos = currentTop + (dist * 0.5); 
                  containerRef.current.scrollTop = nextPos;
@@ -169,16 +160,25 @@ const Teleprompter: React.FC<Props> = ({
   }
 
   return (
-    <div className="relative w-full h-full bg-slate-900/50 rounded-2xl border border-slate-800 overflow-hidden shadow-inner group">
+    <div className="relative w-full h-full bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden shadow-2xl group">
       
-      {/* REMOVED ALL GRADIENTS & LINES per user request for clear visibility */}
+      {/* --- FOCUS GRADIENTS (The "Active Line" Effect) --- */}
+      {/* Top Gradient: Blocks top 42%, fades to transparent */}
+      <div className="absolute top-0 left-0 right-0 h-[42%] bg-gradient-to-b from-slate-950 via-slate-900/95 to-transparent z-10 pointer-events-none"></div>
       
+      {/* Bottom Gradient: Blocks bottom 42%, fades to transparent */}
+      <div className="absolute bottom-0 left-0 right-0 h-[42%] bg-gradient-to-t from-slate-950 via-slate-900/95 to-transparent z-10 pointer-events-none"></div>
+
+      {/* Optional: Subtle Center Line Indicator (Horizontal Bar) */}
+      {/* <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-cyan-500/10 -translate-y-1/2 z-0 pointer-events-none"></div> */}
+
       {/* Scrollable Container */}
       <div 
         ref={containerRef}
         onScroll={handleManualScroll}
-        // Added `scroll-behavior: auto` to ensure JS scroll overrides any native smooth scrolling
-        className="h-full overflow-y-auto no-scrollbar px-3 md:px-8 py-[50vh] text-center touch-pan-y relative z-0 scroll-auto"
+        // 'scroll-behavior: auto' is crucial here so JS can force the scroll position without CSS fighting back
+        className="h-full overflow-y-auto no-scrollbar px-4 md:px-8 py-[50vh] text-center touch-pan-y relative z-0"
+        style={{ scrollBehavior: 'auto' }}
       >
         <div className="flex flex-wrap justify-center content-center items-center">
           {data.segments.map((seg, idx) => (
@@ -194,7 +194,7 @@ const Teleprompter: React.FC<Props> = ({
 
       {/* Status Badge */}
       {isPlaying && (
-        <div className="absolute bottom-4 right-4 text-[10px] md:text-xs text-slate-500 bg-black/60 backdrop-blur px-2 py-1 rounded z-20">
+        <div className="absolute bottom-4 right-4 text-[10px] md:text-xs text-slate-500 bg-black/80 backdrop-blur px-2 py-1 rounded z-20 border border-slate-800">
           {isAudioMode ? "Syncing..." : "Auto-scroll"}
         </div>
       )}
