@@ -18,11 +18,15 @@ interface SegmentMap {
   endPct: number;
 }
 
-// Helper to calculate word weight for auto-scroll timing
+// OPTIMIZED WEIGHTS FOR GEMINI TTS
+// Previous punctuation weight (12) was too high, causing the cursor to "wait" too long at the end of sentences
+// while the audio had already moved on. Reducing this syncs the visual cursor tighter to the audio.
 const calculateWeight = (word: string): number => {
   let w = word.length; 
-  if (word.includes('.') || word.includes('?') || word.includes('!')) w += 12;
-  else if (word.includes(',') || word.includes(';') || word.includes('，')) w += 5;
+  // Reduced from 12 to 3 to prevent "cursor lag" at sentence ends
+  if (word.includes('.') || word.includes('?') || word.includes('!')) w += 3; 
+  // Reduced from 5 to 2
+  else if (word.includes(',') || word.includes(';') || word.includes('，')) w += 2;
   return w;
 };
 
@@ -48,7 +52,6 @@ const Teleprompter: React.FC<Props> = ({
   useEffect(() => {
     if (isPlaying && containerRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
-      // If we are very close to the bottom, reset to top to restart
       if (scrollHeight - scrollTop <= clientHeight + 100) {
          setScrollPos(0);
          if (containerRef.current) containerRef.current.scrollTop = 0;
@@ -56,7 +59,7 @@ const Teleprompter: React.FC<Props> = ({
     }
   }, [isPlaying]);
 
-  // Generate Time Map for Audio Sync
+  // Generate Time Map
   const segmentMap = useMemo<SegmentMap[]>(() => {
     if (!data?.segments) return [];
 
@@ -76,7 +79,6 @@ const Teleprompter: React.FC<Props> = ({
     });
   }, [data]);
 
-  // Handle Manual Scroll interaction
   const handleManualScroll = () => {
     if (!isPlaying && containerRef.current) {
       setScrollPos(containerRef.current.scrollTop);
@@ -91,13 +93,15 @@ const Teleprompter: React.FC<Props> = ({
       if (!isPlaying || !containerRef.current) return;
 
       if (isAudioMode && audioRef?.current) {
-        // --- AUDIO SYNC LOGIC (CENTERING FIX) ---
+        // --- AUDIO SYNC LOGIC ---
         const audio = audioRef.current;
         const duration = audio.duration;
         const currentTime = audio.currentTime;
         
         if (duration > 0) {
           const progress = currentTime / duration;
+          
+          // Find active segment
           const activeSegment = segmentMap.find(
             seg => progress >= seg.startPct && progress < seg.endPct
           );
@@ -109,23 +113,21 @@ const Teleprompter: React.FC<Props> = ({
               const elHeight = el.offsetHeight;
               const elTop = el.offsetTop;
               
-              // FORMULA FOR EXACT CENTER:
-              // TargetScroll = ElementPosition - (Half of Viewport) + (Half of Element Height)
-              // This aligns the center of the element with the center of the viewport.
+              // FORMULA FOR EXACT CENTER
+              // Adjusted Math: We want the element to be strictly in the center.
               const targetTop = elTop - (containerH / 2) + (elHeight / 2);
               
               const currentTop = containerRef.current.scrollTop;
               const dist = targetTop - currentTop;
               
-              // IMPROVEMENT: Increased "Lerp" factor from 0.15 to 0.3
-              // This makes the text "snap" to the center faster, avoiding the "lagging at bottom" feel.
-              if (Math.abs(dist) > 500) {
-                 // If distance is huge (e.g. skip forward), snap instantly
-                 containerRef.current.scrollTop = targetTop;
-                 setScrollPos(targetTop);
-              } else {
-                 // Smoothly slide to center (Active Line Centering)
-                 const nextPos = currentTop + (dist * 0.3);
+              // TRIỆT ĐỂ SOLUTION:
+              // 1. Threshold: If distance is < 1px, don't move (saves micro-jitters).
+              // 2. Factor: 0.5. 
+              //    - 0.9 was too fast (jittery). 
+              //    - 0.1 was too slow (laggy).
+              //    - 0.5 provides a "magnetic" feel. It closes 50% of the gap every 16ms.
+              if (Math.abs(dist) > 0.5) {
+                 const nextPos = currentTop + (dist * 0.5); 
                  containerRef.current.scrollTop = nextPos;
                  setScrollPos(nextPos);
               }
@@ -135,7 +137,7 @@ const Teleprompter: React.FC<Props> = ({
           }
         }
       } else {
-        // --- AUTO SCROLL LOGIC (Text only mode) ---
+        // --- AUTO SCROLL (TEXT MODE) ---
         setScrollPos((prev) => {
           const currentDOMScroll = containerRef.current?.scrollTop || prev;
           const maxScroll = containerRef.current!.scrollHeight - containerRef.current!.clientHeight;
@@ -144,7 +146,6 @@ const Teleprompter: React.FC<Props> = ({
              if(onScrollComplete) onScrollComplete();
              return prev; 
           }
-          // Sync state with DOM for smoothness
           const next = currentDOMScroll + SCROLL_SPEED;
           containerRef.current!.scrollTop = next;
           return next;
@@ -169,21 +170,15 @@ const Teleprompter: React.FC<Props> = ({
 
   return (
     <div className="relative w-full h-full bg-slate-900/50 rounded-2xl border border-slate-800 overflow-hidden shadow-inner group">
-      {/* Visual Gradients - Keep center clear for reading */}
-      <div className="absolute top-0 left-0 w-full h-1/3 bg-gradient-to-b from-slate-950 via-slate-950/80 to-transparent z-10 pointer-events-none"></div>
-      <div className="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent z-10 pointer-events-none"></div>
-
-      {/* Center Line Indicator (Subtle guide for user eyes) */}
-      {isAudioMode && isPlaying && (
-        <div className="absolute top-1/2 left-0 w-full h-[1px] bg-cyan-500/10 z-0 pointer-events-none transform -translate-y-1/2"></div>
-      )}
-
+      
+      {/* REMOVED ALL GRADIENTS & LINES per user request for clear visibility */}
+      
       {/* Scrollable Container */}
-      {/* py-[50vh] ensures the very first line starts in the MIDDLE and the very last line ends in the MIDDLE */}
       <div 
         ref={containerRef}
         onScroll={handleManualScroll}
-        className="h-full overflow-y-auto no-scrollbar px-3 md:px-8 py-[50vh] text-center touch-pan-y relative z-0"
+        // Added `scroll-behavior: auto` to ensure JS scroll overrides any native smooth scrolling
+        className="h-full overflow-y-auto no-scrollbar px-3 md:px-8 py-[50vh] text-center touch-pan-y relative z-0 scroll-auto"
       >
         <div className="flex flex-wrap justify-center content-center items-center">
           {data.segments.map((seg, idx) => (
