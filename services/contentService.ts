@@ -1,7 +1,7 @@
 import { Type } from "@google/genai";
 import ai from "./aiClient";
 import { DailyContent } from "../types";
-import { SPECIFIC_VARIATIONS, WRITING_STYLES, FOCUS_ANGLES, GENERIC_CHARACTERS, CONTENT_FORMATS } from "../data/promptData";
+import { SPECIFIC_VARIATIONS, WRITING_STYLES, FOCUS_ANGLES, CONTENT_FORMATS } from "../data/promptData";
 
 // --- SCHEMAS ---
 const SEGMENT_SCHEMA = {
@@ -50,7 +50,6 @@ export const generateDailyContent = async (
     // Pick random parameters to force diversity
     const randomStyle = WRITING_STYLES[Math.floor(Math.random() * WRITING_STYLES.length)];
     const randomAngle = FOCUS_ANGLES[Math.floor(Math.random() * FOCUS_ANGLES.length)];
-    const randomChar = GENERIC_CHARACTERS[Math.floor(Math.random() * GENERIC_CHARACTERS.length)];
     const randomFormat = CONTENT_FORMATS[Math.floor(Math.random() * CONTENT_FORMATS.length)];
 
     let specificContext = "";
@@ -64,8 +63,8 @@ export const generateDailyContent = async (
       const scenario = variations[Math.floor(Math.random() * variations.length)];
       
       specificContext = `
-        The general topic is "${topicOrText}".
-        SPECIFIC SCENARIO: Write a piece about: "${scenario}".
+        The general category is "${topicOrText}".
+        SPECIFIC THEME: Write a meaningful piece about: "${scenario}".
         
         MANDATORY CONFIGURATION:
         - FORMAT: ${randomFormat} (Strictly follow this structure).
@@ -81,14 +80,13 @@ export const generateDailyContent = async (
           The user wants to practice speaking about: "${topicOrText}".
           
           CRITICAL INSTRUCTION:
-          Do NOT default to a Wikipedia definition or a generic "Hello, I will talk about..." speech.
-          Instead, interpret this topic through the following creative lens:
+          Do NOT write a generic Wikipedia definition or a boring "Hello" speech.
+          Interpret this topic deeply through a meaningful lens:
           
-          - FORMAT: ${randomFormat} (Strictly follow this structure).
-          - If the format invites it, involve a character like ${randomChar}.
+          - FORMAT: ${randomFormat}.
           - Writing Style: ${randomStyle}.
           
-          Make the content unique. If it's a narrative, tell a story. If it's a monologue, dive deep into thoughts.
+          Make the content insightful and coherent.
         `;
       }
     }
@@ -104,19 +102,21 @@ export const generateDailyContent = async (
        `;
     } else {
        fullPrompt = `
-        You are an expert language teacher and a versatile creative writer.
+        You are an expert language teacher and a thoughtful writer.
         
         TASK:
         ${specificContext}
         
-        STRICT CREATIVE RULES:
-        1. **DIVERSITY**: Do NOT always start with "I". Vary the sentence structure based on the requested FORMAT.
-        2. **NATURAL LANGUAGE**: Use language appropriate for the format (e.g., formal for news, casual for dialogue, descriptive for narrative).
-        3. **LENGTH**: A concise but meaningful paragraph or passage (80-130 words).
+        STRICT QUALITY CONTROL RULES:
+        1. **MEANINGFUL CONTENT**: The text must be coherent, logical, and offer a valuable perspective, lesson, or emotional insight. 
+           - AVOID: Trivial complaints, nonsense situations, or chaotic rambling.
+           - AVOID: Starting every sentence with "I". Use varied sentence structures.
+        2. **NATURAL LANGUAGE**: Use high-quality, natural English (and Chinese) suitable for an intermediate-to-advanced learner.
+        3. **LENGTH**: A concise but substantive passage (80-130 words).
         4. **RANDOM SEED**: ${uniqueSeed}.
         
         Output Requirements:
-        1. 'vietnameseTranslation': A high-quality, natural Vietnamese translation (dịch thoát ý, phù hợp văn cảnh).
+        1. 'vietnameseTranslation': A high-quality, natural Vietnamese translation (dịch thoát ý, văn phong hay, phù hợp ngữ cảnh).
         
         2. 'en': English version.
            - 'text': Full text with proper punctuation.
@@ -142,7 +142,7 @@ export const generateDailyContent = async (
       config: {
         responseMimeType: "application/json",
         responseSchema: CONTENT_SCHEMA,
-        temperature: 1.4, // Increased slightly for more variation
+        temperature: 1.3, // Slightly lower temperature to ensure more coherence while keeping creativity
       },
     });
 

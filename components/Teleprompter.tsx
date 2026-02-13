@@ -48,6 +48,7 @@ const Teleprompter: React.FC<Props> = ({
   useEffect(() => {
     if (isPlaying && containerRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+      // If we are very close to the bottom, reset to top to restart
       if (scrollHeight - scrollTop <= clientHeight + 100) {
          setScrollPos(0);
          if (containerRef.current) containerRef.current.scrollTop = 0;
@@ -90,7 +91,7 @@ const Teleprompter: React.FC<Props> = ({
       if (!isPlaying || !containerRef.current) return;
 
       if (isAudioMode && audioRef?.current) {
-        // --- AUDIO SYNC LOGIC ---
+        // --- AUDIO SYNC LOGIC (CENTERING FIX) ---
         const audio = audioRef.current;
         const duration = audio.duration;
         const currentTime = audio.currentTime;
@@ -105,13 +106,28 @@ const Teleprompter: React.FC<Props> = ({
             const el = document.getElementById(`segment-${activeSegment.index}`);
             if (el) {
               const containerH = containerRef.current.clientHeight;
-              const targetTop = el.offsetTop - (containerH / 2) + (el.offsetHeight / 2);
-              const dist = targetTop - scrollPos;
+              const elHeight = el.offsetHeight;
+              const elTop = el.offsetTop;
               
-              if (Math.abs(dist) > 800) {
+              // FORMULA FOR EXACT CENTER:
+              // TargetScroll = ElementPosition - (Half of Viewport) + (Half of Element Height)
+              // This aligns the center of the element with the center of the viewport.
+              const targetTop = elTop - (containerH / 2) + (elHeight / 2);
+              
+              const currentTop = containerRef.current.scrollTop;
+              const dist = targetTop - currentTop;
+              
+              // IMPROVEMENT: Increased "Lerp" factor from 0.15 to 0.3
+              // This makes the text "snap" to the center faster, avoiding the "lagging at bottom" feel.
+              if (Math.abs(dist) > 500) {
+                 // If distance is huge (e.g. skip forward), snap instantly
+                 containerRef.current.scrollTop = targetTop;
                  setScrollPos(targetTop);
               } else {
-                 setScrollPos(prev => prev + (dist * 0.1)); 
+                 // Smoothly slide to center (Active Line Centering)
+                 const nextPos = currentTop + (dist * 0.3);
+                 containerRef.current.scrollTop = nextPos;
+                 setScrollPos(nextPos);
               }
             }
           } else if (progress >= 0.99 && audio.ended) {
@@ -119,14 +135,19 @@ const Teleprompter: React.FC<Props> = ({
           }
         }
       } else {
-        // --- AUTO SCROLL LOGIC ---
+        // --- AUTO SCROLL LOGIC (Text only mode) ---
         setScrollPos((prev) => {
+          const currentDOMScroll = containerRef.current?.scrollTop || prev;
           const maxScroll = containerRef.current!.scrollHeight - containerRef.current!.clientHeight;
-          if (prev >= maxScroll) { 
+          
+          if (currentDOMScroll >= maxScroll - 5) { 
              if(onScrollComplete) onScrollComplete();
              return prev; 
           }
-          return prev + SCROLL_SPEED;
+          // Sync state with DOM for smoothness
+          const next = currentDOMScroll + SCROLL_SPEED;
+          containerRef.current!.scrollTop = next;
+          return next;
         });
       }
       animationFrameId = requestAnimationFrame(animate);
@@ -136,14 +157,7 @@ const Teleprompter: React.FC<Props> = ({
       animationFrameId = requestAnimationFrame(animate);
     }
     return () => cancelAnimationFrame(animationFrameId);
-  }, [isPlaying, SCROLL_SPEED, onScrollComplete, isAudioMode, audioRef, segmentMap, scrollPos]);
-
-  // Sync React State to DOM scrollTop
-  useEffect(() => {
-    if (containerRef.current && isPlaying) {
-      containerRef.current.scrollTop = scrollPos;
-    }
-  }, [scrollPos, isPlaying]);
+  }, [isPlaying, SCROLL_SPEED, onScrollComplete, isAudioMode, audioRef, segmentMap]);
 
   if (!data?.segments) {
     return (
@@ -155,15 +169,21 @@ const Teleprompter: React.FC<Props> = ({
 
   return (
     <div className="relative w-full h-full bg-slate-900/50 rounded-2xl border border-slate-800 overflow-hidden shadow-inner group">
-      {/* Visual Gradients */}
-      <div className="absolute top-0 left-0 w-full h-1/4 bg-gradient-to-b from-slate-950 via-slate-950/80 to-transparent z-10 pointer-events-none"></div>
-      <div className="absolute bottom-0 left-0 w-full h-1/4 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent z-10 pointer-events-none"></div>
+      {/* Visual Gradients - Keep center clear for reading */}
+      <div className="absolute top-0 left-0 w-full h-1/3 bg-gradient-to-b from-slate-950 via-slate-950/80 to-transparent z-10 pointer-events-none"></div>
+      <div className="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent z-10 pointer-events-none"></div>
+
+      {/* Center Line Indicator (Subtle guide for user eyes) */}
+      {isAudioMode && isPlaying && (
+        <div className="absolute top-1/2 left-0 w-full h-[1px] bg-cyan-500/10 z-0 pointer-events-none transform -translate-y-1/2"></div>
+      )}
 
       {/* Scrollable Container */}
+      {/* py-[50vh] ensures the very first line starts in the MIDDLE and the very last line ends in the MIDDLE */}
       <div 
         ref={containerRef}
         onScroll={handleManualScroll}
-        className="h-full overflow-y-auto no-scrollbar px-3 md:px-8 py-[45vh] text-center touch-pan-y"
+        className="h-full overflow-y-auto no-scrollbar px-3 md:px-8 py-[50vh] text-center touch-pan-y relative z-0"
       >
         <div className="flex flex-wrap justify-center content-center items-center">
           {data.segments.map((seg, idx) => (

@@ -26,7 +26,8 @@ export const LibraryPanel: React.FC<Props> = ({
   };
 
   return (
-    <div className="flex-none lg:w-96 xl:w-[28rem] flex flex-col mt-4 lg:mt-0 lg:pt-4 mb-10 lg:mb-0">
+    // Container
+    <div className="flex-none w-full lg:w-96 xl:w-[28rem] flex flex-col mt-4 lg:mt-0 lg:pt-4 mb-20 lg:mb-0">
       
       {/* Header Actions */}
       <div className="flex justify-between items-center mb-3 px-1">
@@ -43,11 +44,12 @@ export const LibraryPanel: React.FC<Props> = ({
       </div>
 
       {/* Scrollable Glass List */}
-      <div className="h-[450px] lg:h-auto lg:flex-1 bg-white/5 border border-white/10 rounded-2xl overflow-hidden backdrop-blur-md shadow-inner flex flex-col relative">
+      {/* CHANGED: Explicit min-height and background color settings to ensure visibility on mobile */}
+      <div className="h-auto min-h-[400px] lg:min-h-0 lg:h-auto lg:flex-1 bg-slate-900/40 border border-white/10 rounded-2xl overflow-hidden backdrop-blur-md shadow-xl flex flex-col relative">
         
-        <div className="flex-1 overflow-y-auto p-3 space-y-2 no-scrollbar">
+        <div className="flex-1 overflow-y-auto p-3 space-y-2 no-scrollbar max-h-[500px] lg:max-h-none">
           {savedLessons.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-blue-300/40 text-center p-6">
+            <div className="h-full flex flex-col items-center justify-center text-blue-300/40 text-center p-6 min-h-[300px]">
               <div className="text-4xl mb-2">📭</div>
               <p className="text-sm">No lessons yet.</p>
             </div>
@@ -56,7 +58,7 @@ export const LibraryPanel: React.FC<Props> = ({
               <div 
                 key={lesson.id}
                 onClick={() => onLoadLesson(lesson)}
-                className="group relative p-3.5 rounded-xl bg-slate-900/40 hover:bg-slate-900/60 border border-white/5 hover:border-cyan-400/30 cursor-pointer transition-all duration-300 shadow-sm active:scale-[0.99]"
+                className="group relative p-3.5 rounded-xl bg-slate-800/60 hover:bg-slate-800/90 border border-white/5 hover:border-cyan-400/30 cursor-pointer transition-all duration-300 shadow-sm active:scale-[0.99]"
               >
                 <div className="pr-6">
                   <h4 className="font-extrabold text-white text-sm mb-1 drop-shadow-md tracking-wide">{lesson.topic}</h4>
@@ -76,7 +78,7 @@ export const LibraryPanel: React.FC<Props> = ({
                 {/* Hover Delete - Improved Hit Area */}
                 <button 
                   onClick={(e) => onDeleteLesson(lesson.id, e)}
-                  className="absolute top-1 right-1 p-2 text-slate-500 hover:text-red-400 lg:opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-1 right-1 p-2 text-slate-500 hover:text-red-400 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                 </button>
@@ -86,7 +88,7 @@ export const LibraryPanel: React.FC<Props> = ({
         </div>
         
         {/* Bottom Fade */}
-        <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-slate-900/40 to-transparent pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-slate-900/60 to-transparent pointer-events-none"></div>
       </div>
     </div>
   );

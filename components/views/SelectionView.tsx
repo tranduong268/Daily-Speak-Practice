@@ -26,7 +26,10 @@ export const SelectionView: React.FC<Props> = ({
     <div className="w-full max-w-7xl mx-auto p-4 md:p-6 animate-fade-in flex flex-col lg:flex-row gap-6 lg:gap-8 min-h-[100dvh] overflow-y-auto">
       
       {/* LEFT COLUMN: Input & Inspiration */}
-      <div className="flex-1 flex flex-col justify-start pt-2 md:pt-4">
+      {/* CHANGED: Removed 'flex-1' on mobile default. Added 'lg:flex-1'. 
+          This prevents the left column from forcing full height on mobile, 
+          allowing the Library column below to sit naturally in the flow. */}
+      <div className="w-full lg:flex-1 flex flex-col justify-start pt-2 md:pt-4">
         
         <WelcomeHeader />
         
