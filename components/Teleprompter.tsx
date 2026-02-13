@@ -116,9 +116,10 @@ const Teleprompter: React.FC<Props> = ({
               const currentTop = containerRef.current.scrollTop;
               const dist = targetTop - currentTop;
               
-              // Smooth Lock: 0.5 lerp factor
+              // Smooth Lock: 0.7 lerp factor (Increased from 0.5 for tighter snap)
+              // This makes the text catch up faster to the audio
               if (Math.abs(dist) > 0.5) {
-                 const nextPos = currentTop + (dist * 0.5); 
+                 const nextPos = currentTop + (dist * 0.7); 
                  containerRef.current.scrollTop = nextPos;
                  setScrollPos(nextPos);
               }
@@ -163,14 +164,12 @@ const Teleprompter: React.FC<Props> = ({
     <div className="relative w-full h-full bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden shadow-2xl group">
       
       {/* --- FOCUS GRADIENTS (The "Active Line" Effect) --- */}
-      {/* Top Gradient: Blocks top 42%, fades to transparent */}
-      <div className="absolute top-0 left-0 right-0 h-[42%] bg-gradient-to-b from-slate-950 via-slate-900/95 to-transparent z-10 pointer-events-none"></div>
+      {/* Heavy gradients to force eye to the center 16-20% of screen */}
+      {/* Top Gradient */}
+      <div className="absolute top-0 left-0 right-0 h-[42%] bg-gradient-to-b from-slate-950 via-slate-950/95 to-transparent z-10 pointer-events-none"></div>
       
-      {/* Bottom Gradient: Blocks bottom 42%, fades to transparent */}
-      <div className="absolute bottom-0 left-0 right-0 h-[42%] bg-gradient-to-t from-slate-950 via-slate-900/95 to-transparent z-10 pointer-events-none"></div>
-
-      {/* Optional: Subtle Center Line Indicator (Horizontal Bar) */}
-      {/* <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-cyan-500/10 -translate-y-1/2 z-0 pointer-events-none"></div> */}
+      {/* Bottom Gradient */}
+      <div className="absolute bottom-0 left-0 right-0 h-[42%] bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent z-10 pointer-events-none"></div>
 
       {/* Scrollable Container */}
       <div 
