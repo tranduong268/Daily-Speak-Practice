@@ -166,9 +166,9 @@ const Teleprompter: React.FC<Props> = ({
   return (
     <div className="relative w-full h-full bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden shadow-2xl group">
       
-      {/* --- FOCUS GRADIENTS --- */}
-      <div className="absolute top-0 left-0 right-0 h-[42%] bg-gradient-to-b from-slate-950 via-slate-950/95 to-transparent z-10 pointer-events-none"></div>
-      <div className="absolute bottom-0 left-0 right-0 h-[42%] bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent z-10 pointer-events-none"></div>
+      {/* --- FOCUS GRADIENTS REMOVED AS REQUESTED --- */}
+      {/* <div className="absolute top-0 left-0 right-0 h-[42%] bg-gradient-to-b from-slate-950 via-slate-950/95 to-transparent z-10 pointer-events-none"></div> */}
+      {/* <div className="absolute bottom-0 left-0 right-0 h-[42%] bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent z-10 pointer-events-none"></div> */}
 
       {/* Scrollable Container */}
       <div 

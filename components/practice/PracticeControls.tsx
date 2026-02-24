@@ -215,7 +215,7 @@ export const PracticeControls: React.FC<Props> = ({
         {/* Row 2: Settings Grid */}
         <div className={`grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 text-[10px] md:text-xs text-slate-400`}>
           
-          {/* SCROLL SPEED SLIDER - ALWAYS ACTIVE */}
+          {/* SCROLL SPEED SLIDER - ALWAYS CONTROLS TEXT SCROLLING */}
           <div className="col-span-1 md:col-span-1 flex items-center gap-1.5 md:gap-3 bg-slate-800/50 rounded-lg px-2 py-2 md:px-3">
               <span className={`w-6 md:w-8 shrink-0 ${isAudioPlaying ? 'text-amber-400' : 'text-cyan-400'} font-bold`}>
                 Spd

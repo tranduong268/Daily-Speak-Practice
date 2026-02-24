@@ -39,6 +39,7 @@ export const PracticeView: React.FC<Props> = ({
   // Override settings when Audio is playing (Sample Reading Mode)
   // We allow Teleprompter to handle the sync logic internally now using the audioRef
   // REDUCED FONT SIZE to 1.8 as requested to help centering
+  // REMOVED forced teleprompterSpeed: 5 so user can adjust scroll responsiveness manually
   const effectiveSettings = isAudioPlaying 
     ? { ...settings, fontSize: 1.8 } 
     : settings;

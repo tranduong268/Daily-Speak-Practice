@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     // Định nghĩa biến toàn cục process.env.API_KEY để code hiện tại hoạt động bình thường
     define: {
-      'process.env.API_KEY': JSON.stringify(env.API_KEY)
+      'process.env.API_KEY': JSON.stringify(env.API_KEY || env.GEMINI_API_KEY || env.GOOGLE_API_KEY)
     },
     build: {
       outDir: 'dist',
